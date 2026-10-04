@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "yolo/trt_engine.hpp"
+#include "yolo/log.hpp"
 
 #include <NvInferPlugin.h>
 #include <opencv2/core/cuda.hpp>
@@ -15,9 +16,8 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
-#include <iostream>
 #include <stdexcept>
-#include <unordered_map>
+#include <utility>
 
 namespace yolo {
 namespace {
@@ -50,27 +50,12 @@ std::size_t volume(const nvinfer1::Dims& dims) {
     return result;
 }
 
-const std::vector<std::string> kCocoNames = {
-    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
-    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard",
-    "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-    "teddy bear", "hair drier", "toothbrush"
-};
-
-cv::Scalar color_for(int label) {
-    return cv::Scalar((37 * label + 80) % 255, (17 * label + 160) % 255, (29 * label + 40) % 255);
-}
-
 }  // namespace
 
 void Logger::log(Severity severity, const char* message) noexcept {
     if (severity <= Severity::kWARNING) {
-        std::cerr << "TensorRT: " << message << '\n';
+        yolo::log(severity <= Severity::kERROR ? LogLevel::Error : LogLevel::Warning,
+                  "TensorRT", message);
     }
 }
 
@@ -225,7 +210,8 @@ void TrtWorker::preprocess(const cv::Mat& image, float& scale, float& pad_x, flo
     channels_[0].convertTo(blue, CV_32F, 1.0 / 255.0, cv_stream);
 }
 
-void TrtWorker::postprocess(Frame& frame, float scale, float pad_x, float pad_y) {
+void TrtWorker::postprocess(InferenceResult& result, float scale, float pad_x, float pad_y) {
+    const auto& image = result.frame->image;
     const auto* count = static_cast<const int*>(buffer("num_dets").host);
     const auto* boxes = static_cast<const float*>(buffer("boxes").host);
     const auto* scores = static_cast<const float*>(buffer("scores").host);
@@ -233,22 +219,26 @@ void TrtWorker::postprocess(Frame& frame, float scale, float pad_x, float pad_y)
     const int max_detections = static_cast<int>(buffer("scores").bytes / sizeof(float));
     const int detections = std::clamp(count[0], 0, max_detections);
 
-    frame.detections.clear();
-    frame.detections.reserve(static_cast<std::size_t>(detections));
+    result.detections.reserve(static_cast<std::size_t>(detections));
     for (int i = 0; i < detections; ++i) {
-        const float x0 = std::clamp((boxes[i * 4] - pad_x) / scale, 0.0f, static_cast<float>(frame.image.cols));
-        const float y0 = std::clamp((boxes[i * 4 + 1] - pad_y) / scale, 0.0f, static_cast<float>(frame.image.rows));
-        const float x1 = std::clamp((boxes[i * 4 + 2] - pad_x) / scale, 0.0f, static_cast<float>(frame.image.cols));
-        const float y1 = std::clamp((boxes[i * 4 + 3] - pad_y) / scale, 0.0f, static_cast<float>(frame.image.rows));
-        frame.detections.push_back({labels[i], scores[i], cv::Rect2f(x0, y0, x1 - x0, y1 - y0)});
+        const float x0 = std::clamp((boxes[i * 4] - pad_x) / scale, 0.0f, static_cast<float>(image.cols));
+        const float y0 = std::clamp((boxes[i * 4 + 1] - pad_y) / scale, 0.0f, static_cast<float>(image.rows));
+        const float x1 = std::clamp((boxes[i * 4 + 2] - pad_x) / scale, 0.0f, static_cast<float>(image.cols));
+        const float y1 = std::clamp((boxes[i * 4 + 3] - pad_y) / scale, 0.0f, static_cast<float>(image.rows));
+        result.detections.push_back({labels[i], scores[i], cv::Rect2f(x0, y0, x1 - x0, y1 - y0)});
     }
 }
 
-void TrtWorker::process(Frame& frame) {
+InferenceResult TrtWorker::process(FramePtr frame) {
+    if (!frame || frame->image.empty() || frame->image.type() != CV_8UC3) {
+        throw std::invalid_argument("expected a nonempty BGR CV_8UC3 frame");
+    }
+    InferenceResult result;
+    result.frame = std::move(frame);
     float scale = 1.0f;
     float pad_x = 0.0f;
     float pad_y = 0.0f;
-    preprocess(frame.image, scale, pad_x, pad_y);
+    preprocess(result.frame->image, scale, pad_x, pad_y);
     check_cuda(cudaStreamSynchronize(stream_), "CUDA preprocessing");
 
     const auto start = std::chrono::steady_clock::now();
@@ -262,18 +252,9 @@ void TrtWorker::process(Frame& frame) {
     }
     check_cuda(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");
     const auto end = std::chrono::steady_clock::now();
-    frame.inference_ms = std::chrono::duration<double, std::milli>(end - start).count();
-    postprocess(frame, scale, pad_x, pad_y);
-
-    for (const auto& detection : frame.detections) {
-        const auto color = color_for(detection.label);
-        cv::rectangle(frame.image, detection.box, color, 2);
-        const std::string name = detection.label >= 0 && static_cast<std::size_t>(detection.label) < kCocoNames.size()
-            ? kCocoNames[static_cast<std::size_t>(detection.label)]
-            : "class_" + std::to_string(detection.label);
-        const std::string text = name + " " + cv::format("%.1f%%", detection.score * 100.0f);
-        cv::putText(frame.image, text, detection.box.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
-    }
+    result.inference_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    postprocess(result, scale, pad_x, pad_y);
+    return result;
 }
 
 }  // namespace yolo

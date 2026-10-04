@@ -8,11 +8,13 @@
 
 namespace yolo {
 
+enum class InputMode { Offline, Realtime };
+
 struct Config {
     std::string engine_path;
     std::string source;
     int device{0};
-    std::size_t workers{1};
+    InputMode mode{InputMode::Offline};
     std::size_t queue_depth{4};
     bool show{true};
     std::string output_video;

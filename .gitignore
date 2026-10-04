@@ -2,6 +2,7 @@
 *.code-workspace
 
 build/
+build-tests/
 yolov8_trt10
 yolov8_cpu
 multithreadingTest

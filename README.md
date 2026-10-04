@@ -4,10 +4,15 @@ YoloTRTFlow is a compact YOLOv8 inference pipeline built with TensorRT 10 and Op
 It loads a TensorRT `.engine` containing EfficientNMS and accepts images, image
 directories, videos, cameras, and video streams.
 
-Runtime options are stored in a YAML file, including the CUDA device, worker
-count, queue depth, display and video output, and benchmark range. Each worker
-owns an independent TensorRT execution context, CUDA stream, and set of I/O
-buffers. Completed frames are restored to their original order before output.
+The reusable `yolo_trt_core` library loads the engine and processes submitted
+frames on one background worker. The CLI owns image/video input, rendering,
+display, and video output. Runtime options are stored in YAML.
+
+Offline mode blocks when queues fill and processes every frame. Realtime mode
+keeps only the latest pending input and output (capacity 1). A `FrameBus` shares
+read-only frame references with subscribers; each pipeline owns its own queue.
+See [the TASK 2 architecture guide](docs/task2-architecture.md) for callbacks,
+ownership, and shutdown semantics.
 
 The repository also includes a minimal serial Python CPU demo for a simple
 performance comparison.
@@ -15,8 +20,11 @@ performance comparison.
 ## Project layout
 
 ```text
-├─ src/                    C++ implementation
-├─ include/yolo/           C++ headers
+├─ src/                    Core library and CLI implementations
+├─ include/yolo/           Public interfaces and queue/FrameBus helpers
+├─ tests/                  Queue, configuration, fan-out, and rendering tests
+├─ examples/               Standalone callback exercise
+├─ docs/                   Architecture and review guide
 ├─ config.example.yaml     Example runtime configuration
 ├─ cpu_demo.py             Serial Python CPU baseline
 ├─ export-det.py           YOLOv8 ONNX export utility
@@ -47,8 +55,26 @@ With a multi-config Windows generator, the executable is commonly located at:
 .\build\Release\yolo_trt_flow.exe config.example.yaml
 ```
 
-Copy and edit `config.example.yaml` to select the engine, input source, worker
-count, and queue depth. Setting `workers` to `1` uses one inference worker.
+Copy and edit `config.example.yaml` to select the engine, source, and
+`pipeline.mode` (`offline` or `realtime`). `pipeline.queue_depth` applies only
+to offline mode. Missing mode defaults to offline. This version uses one worker;
+legacy `pipeline.workers` values other than 1 produce a warning and are ignored.
+
+Natural end of input drains pending tasks. Pressing `q` cancels pending input,
+allows the current inference to finish, and consumes available results before
+joining the worker. A stopped pipeline must be recreated to run again.
+
+Tests and callback exercise without GPU dependencies:
+
+```bash
+cmake -S . -B build-tests -DYOLO_BUILD_GPU=OFF -DBUILD_TESTING=ON
+cmake --build build-tests
+ctest --test-dir build-tests --output-on-failure
+./build-tests/callback_demo
+```
+
+With the normal GPU build, `ctest --test-dir build --output-on-failure` also
+checks configuration, FrameBus fan-out, and rendering without running inference.
 
 ## Python CPU baseline
 

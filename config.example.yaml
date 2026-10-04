@@ -9,8 +9,9 @@ input:
   source: "data/passby.mp4"
 
 pipeline:
-  # Set workers to 1 for serial TensorRT execution.
-  workers: 4
+  # offline: process every frame; realtime: keep only the latest pending frame.
+  mode: offline
+  # Used only in offline mode; realtime always uses capacity 1.
   queue_depth: 8
 
 output:

@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <vector>
@@ -19,10 +20,16 @@ struct Detection {
 struct Frame {
     std::uint64_t id{};
     cv::Mat image;
-    std::vector<Detection> detections;
     std::chrono::steady_clock::time_point enqueued_at;
+};
+
+// Producers must not modify pixel storage or its aliases after publishing.
+using FramePtr = std::shared_ptr<const Frame>;
+
+struct InferenceResult {
+    FramePtr frame;  // Keeps the original image alive for rendering.
+    std::vector<Detection> detections;
     double inference_ms{};
-    double end_to_end_ms{};
 };
 
 }  // namespace yolo

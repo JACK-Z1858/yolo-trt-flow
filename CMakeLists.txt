@@ -16,34 +16,69 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(CUDAToolkit REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(TensorRT REQUIRED)
 find_package(Threads REQUIRED)
+include(CTest)
+option(YOLO_BUILD_GPU "Build the TensorRT library and CLI" ON)
 
-add_executable(yolo_trt_flow
-    src/main.cpp
-    src/config.cpp
-    src/trt_engine.cpp
-)
+function(yolo_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
 
-target_include_directories(yolo_trt_flow PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    ${OpenCV_INCLUDE_DIRS}
-    ${TensorRT_INCLUDE_DIRS}
-)
+add_library(yolo_logging STATIC src/log.cpp)
+target_include_directories(yolo_logging PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(yolo_logging PUBLIC Threads::Threads)
+yolo_warnings(yolo_logging)
 
-target_link_directories(yolo_trt_flow PRIVATE ${TensorRT_LIB_DIRS})
+add_executable(callback_demo examples/callback_demo.cpp)
+target_link_libraries(callback_demo PRIVATE Threads::Threads)
+yolo_warnings(callback_demo)
 
-target_link_libraries(yolo_trt_flow PRIVATE
-    CUDA::cudart
-    ${OpenCV_LIBS}
-    ${TensorRT_LIBRARIES}
-    Threads::Threads
-)
+if(BUILD_TESTING)
+    add_executable(queue_tests tests/queue_tests.cpp)
+    target_include_directories(queue_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_link_libraries(queue_tests PRIVATE Threads::Threads)
+    yolo_warnings(queue_tests)
+    add_test(NAME queue_tests COMMAND queue_tests)
+    set_tests_properties(queue_tests PROPERTIES TIMEOUT 10)
+endif()
 
-if(MSVC)
-    target_compile_options(yolo_trt_flow PRIVATE /W4)
-else()
-    target_compile_options(yolo_trt_flow PRIVATE -Wall -Wextra -Wpedantic)
+if(YOLO_BUILD_GPU)
+    find_package(CUDAToolkit REQUIRED)
+    find_package(OpenCV REQUIRED)
+    find_package(TensorRT REQUIRED)
+
+    add_library(yolo_trt_core STATIC src/trt_engine.cpp src/pipeline.cpp)
+    target_include_directories(yolo_trt_core PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        ${OpenCV_INCLUDE_DIRS}
+        ${TensorRT_INCLUDE_DIRS}
+    )
+    target_link_directories(yolo_trt_core PUBLIC ${TensorRT_LIB_DIRS})
+    target_link_libraries(yolo_trt_core PUBLIC
+        CUDA::cudart ${OpenCV_LIBS} ${TensorRT_LIBRARIES} Threads::Threads yolo_logging
+    )
+    yolo_warnings(yolo_trt_core)
+
+    add_library(yolo_cli_support STATIC src/config.cpp src/reader.cpp src/renderer.cpp)
+    target_include_directories(yolo_cli_support PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/include" ${OpenCV_INCLUDE_DIRS}
+    )
+    target_link_libraries(yolo_cli_support PUBLIC ${OpenCV_LIBS} yolo_logging)
+    yolo_warnings(yolo_cli_support)
+
+    add_executable(yolo_trt_flow src/main.cpp src/cli.cpp)
+    target_link_libraries(yolo_trt_flow PRIVATE yolo_trt_core yolo_cli_support)
+    yolo_warnings(yolo_trt_flow)
+
+    if(BUILD_TESTING)
+        add_executable(frontend_tests tests/frontend_tests.cpp)
+        target_link_libraries(frontend_tests PRIVATE yolo_cli_support)
+        yolo_warnings(frontend_tests)
+        add_test(NAME frontend_tests COMMAND frontend_tests)
+        set_tests_properties(frontend_tests PROPERTIES TIMEOUT 10)
+    endif()
 endif()

@@ -28,7 +28,7 @@ public:
     TrtWorker(const TrtWorker&) = delete;
     TrtWorker& operator=(const TrtWorker&) = delete;
 
-    void process(Frame& frame);
+    InferenceResult process(FramePtr frame);
 
 private:
     struct Buffer {
@@ -53,7 +53,7 @@ private:
 
     Buffer& buffer(const std::string& name);
     void preprocess(const cv::Mat& image, float& scale, float& pad_x, float& pad_y);
-    void postprocess(Frame& frame, float scale, float pad_x, float pad_y);
+    void postprocess(InferenceResult& result, float scale, float pad_x, float pad_y);
 };
 
 class TrtEngine {

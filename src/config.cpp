@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "yolo/config.hpp"
+#include "yolo/log.hpp"
 
 #include <opencv2/core/persistence.hpp>
 #include <stdexcept>
@@ -35,15 +36,26 @@ Config load_config(const std::string& path) {
     read_if_present(model, "device", config.device);
     read_if_present(input, "source", config.source);
 
-    int workers = static_cast<int>(config.workers);
-    int queue_depth = static_cast<int>(config.queue_depth);
-    read_if_present(pipeline, "workers", workers);
-    read_if_present(pipeline, "queue_depth", queue_depth);
-    if (workers <= 0 || queue_depth <= 0) {
-        throw std::runtime_error("workers and queue_depth must be greater than zero");
+    std::string mode = "offline";
+    read_if_present(pipeline, "mode", mode);
+    if (mode == "offline") config.mode = InputMode::Offline;
+    else if (mode == "realtime") config.mode = InputMode::Realtime;
+    else throw std::runtime_error("pipeline.mode must be offline or realtime");
+
+    // Legacy configurations are accepted, but execution is now single-worker.
+    if (!pipeline["workers"].empty()) {
+        int workers = 1;
+        read_if_present(pipeline, "workers", workers);
+        if (workers != 1) log(LogLevel::Warning, "config", "pipeline.workers is ignored; one worker is used");
     }
-    config.workers = static_cast<std::size_t>(workers);
-    config.queue_depth = static_cast<std::size_t>(queue_depth);
+    int queue_depth = static_cast<int>(config.queue_depth);
+    if (config.mode == InputMode::Offline) {
+        read_if_present(pipeline, "queue_depth", queue_depth);
+        if (queue_depth <= 0) throw std::runtime_error("queue_depth must be greater than zero");
+        config.queue_depth = static_cast<std::size_t>(queue_depth);
+    } else {
+        config.queue_depth = 1;
+    }
 
     read_if_present(output, "show", config.show);
     read_if_present(output, "video", config.output_video);
