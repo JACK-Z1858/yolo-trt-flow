@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/reader.hpp"
-#include "yolo/log.hpp"
+#include "app/cli/reader.hpp"
+#include "common/log.hpp"
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/videoio.hpp>
 #include <algorithm>
@@ -9,7 +9,11 @@
 #include <stdexcept>
 #include <vector>
 
-namespace yolo {
+namespace app::cli {
+using common::Frame;
+using common::FrameBus;
+using common::LogLevel;
+using common::log;
 namespace {
 bool is_image(const std::filesystem::path& path) {
     auto extension = path.extension().string();
@@ -61,4 +65,4 @@ void read_source(const Config& config, const FrameBus& bus, const std::atomic<bo
     }
     log(LogLevel::Info, "reader", "source finished");
 }
-}  // namespace yolo
+}  // namespace app::cli

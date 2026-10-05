@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <string>
 
-namespace yolo {
+namespace app::cli {
 
 enum class InputMode { Offline, Realtime };
 
@@ -25,4 +25,4 @@ struct Config {
 
 Config load_config(const std::string& path);
 
-}  // namespace yolo
+}  // namespace app::cli

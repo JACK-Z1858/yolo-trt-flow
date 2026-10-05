@@ -28,7 +28,7 @@ public:
     TrtWorker(const TrtWorker&) = delete;
     TrtWorker& operator=(const TrtWorker&) = delete;
 
-    InferenceResult process(FramePtr frame);
+    InferenceResult process(common::FramePtr frame);
 
 private:
     struct Buffer {

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-#include "yolo/config.hpp"
-#include "yolo/log.hpp"
+#include "app/cli/config.hpp"
+#include "common/log.hpp"
 
 #include <opencv2/core/persistence.hpp>
 #include <stdexcept>
 
-namespace yolo {
+namespace app::cli {
+using common::LogLevel;
+using common::log;
 namespace {
 
 template <typename T>
@@ -80,4 +82,4 @@ Config load_config(const std::string& path) {
     return config;
 }
 
-}  // namespace yolo
+}  // namespace app::cli

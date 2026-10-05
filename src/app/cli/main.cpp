@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/cli.hpp"
-#include "yolo/config.hpp"
-#include "yolo/log.hpp"
+#include "app/cli/cli.hpp"
+#include "app/cli/config.hpp"
+#include "common/log.hpp"
 #include <exception>
 #include <iostream>
 
@@ -11,10 +11,10 @@ int main(int argc, char** argv) {
         return 2;
     }
     try {
-        yolo::run_cli(yolo::load_config(argv[1]));
+        app::cli::run_cli(app::cli::load_config(argv[1]));
         return 0;
     } catch (const std::exception& error) {
-        yolo::log(yolo::LogLevel::Error, "cli", error.what());
+        common::log(common::LogLevel::Error, "cli", error.what());
         return 1;
     }
 }

@@ -20,9 +20,15 @@ performance comparison.
 ## Project layout
 
 ```text
-├─ src/                    Core library and CLI implementations
-├─ include/yolo/           Public interfaces and queue/FrameBus helpers
-├─ tests/                  Queue, configuration, fan-out, and rendering tests
+├─ include/                Headers, grouped by responsibility
+│  ├─ common/              Frame, FrameBus, bounded queue, and logging
+│  ├─ yolo/                YOLO result types, TensorRT engine, and pipeline
+│  └─ app/cli/             CLI configuration, reader, rendering, and orchestration
+├─ src/                    Implementations, mirroring include/
+│  ├─ common/              Shared logging implementation
+│  ├─ yolo/                TensorRT engine and pipeline implementations
+│  └─ app/cli/             CLI entry point and frontend implementations
+├─ tests/                  common/ and app/cli/ tests
 ├─ examples/               Standalone callback exercise
 ├─ docs/                   Architecture and review guide
 ├─ config.example.yaml     Example runtime configuration
@@ -30,6 +36,10 @@ performance comparison.
 ├─ export-det.py           YOLOv8 ONNX export utility
 └─ models/common.py        EfficientNMS export support
 ```
+
+Namespaces follow the same boundaries: `common`, `yolo`, and `app::cli`.
+The dependency direction is CLI → YOLO/common and YOLO → common.
+Shared frame distribution has no dependency on YOLO result types or TensorRT.
 
 ## C++ TensorRT application
 

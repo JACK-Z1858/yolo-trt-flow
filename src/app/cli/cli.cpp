@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/cli.hpp"
-#include "yolo/log.hpp"
+#include "app/cli/cli.hpp"
+#include "common/log.hpp"
 #include "yolo/pipeline.hpp"
-#include "yolo/reader.hpp"
-#include "yolo/renderer.hpp"
+#include "app/cli/reader.hpp"
+#include "app/cli/renderer.hpp"
 #include <opencv2/highgui.hpp>
 #include <opencv2/videoio.hpp>
 #include <atomic>
@@ -14,7 +14,16 @@
 #include <stdexcept>
 #include <thread>
 
-namespace yolo {
+namespace app::cli {
+using common::BlockingQueue;
+using common::FrameBus;
+using common::FramePtr;
+using common::LogLevel;
+using common::QueueFullPolicy;
+using common::StopMode;
+using common::log;
+using yolo::InferencePipeline;
+using yolo::InferenceResult;
 void run_cli(const Config& config) {
     const bool realtime = config.mode == InputMode::Realtime;
     const auto policy = realtime ? QueueFullPolicy::DropOldest : QueueFullPolicy::Block;
@@ -118,4 +127,4 @@ void run_cli(const Config& config) {
     }
     log(LogLevel::Info, "cli", "shutdown complete");
 }
-}  // namespace yolo
+}  // namespace app::cli

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "yolo/trt_engine.hpp"
-#include "yolo/log.hpp"
+#include "common/log.hpp"
 
 #include <NvInferPlugin.h>
 #include <opencv2/core/cuda.hpp>
@@ -54,7 +54,7 @@ std::size_t volume(const nvinfer1::Dims& dims) {
 
 void Logger::log(Severity severity, const char* message) noexcept {
     if (severity <= Severity::kWARNING) {
-        yolo::log(severity <= Severity::kERROR ? LogLevel::Error : LogLevel::Warning,
+        common::log(severity <= Severity::kERROR ? common::LogLevel::Error : common::LogLevel::Warning,
                   "TensorRT", message);
     }
 }
@@ -229,7 +229,7 @@ void TrtWorker::postprocess(InferenceResult& result, float scale, float pad_x, f
     }
 }
 
-InferenceResult TrtWorker::process(FramePtr frame) {
+InferenceResult TrtWorker::process(common::FramePtr frame) {
     if (!frame || frame->image.empty() || frame->image.type() != CV_8UC3) {
         throw std::invalid_argument("expected a nonempty BGR CV_8UC3 frame");
     }

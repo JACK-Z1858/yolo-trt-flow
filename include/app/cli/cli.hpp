@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #pragma once
-#include "yolo/config.hpp"
+#include "app/cli/config.hpp"
 
-namespace yolo {
+namespace app::cli {
 void run_cli(const Config& config);
-}  // namespace yolo
+}  // namespace app::cli

@@ -2,7 +2,7 @@
 #pragma once
 #include "yolo/types.hpp"
 
-namespace yolo {
+namespace app::cli {
 // Always draws on a copy; shared input pixels remain unchanged.
-cv::Mat render(const InferenceResult& result);
-}  // namespace yolo
+cv::Mat render(const yolo::InferenceResult& result);
+}  // namespace app::cli

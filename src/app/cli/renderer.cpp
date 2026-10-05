@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/renderer.hpp"
+#include "app/cli/renderer.hpp"
 #include <opencv2/imgproc.hpp>
 #include <string>
 #include <vector>
 
-namespace yolo {
+namespace app::cli {
 namespace {
 const std::vector<std::string> kCocoNames = {
     "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
@@ -18,7 +18,7 @@ const std::vector<std::string> kCocoNames = {
     "teddy bear", "hair drier", "toothbrush"
 };
 }
-cv::Mat render(const InferenceResult& result) {
+cv::Mat render(const yolo::InferenceResult& result) {
     auto image = result.frame->image.clone();
     for (const auto& detection : result.detections) {
         const auto color = cv::Scalar((37 * detection.label + 80) % 255,
@@ -32,4 +32,4 @@ cv::Mat render(const InferenceResult& result) {
     }
     return image;
 }
-}  // namespace yolo
+}  // namespace app::cli

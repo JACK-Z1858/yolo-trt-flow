@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/blocking_queue.hpp"
+#include "common/blocking_queue.hpp"
 #include <chrono>
 #include <future>
 #include <iostream>
@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 using namespace std::chrono_literals;
-using namespace yolo;
+using namespace common;
 
 void require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);

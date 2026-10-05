@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace yolo {
+namespace common {
 
 enum class QueueFullPolicy { Block, DropOldest };
 enum class StopMode { Drain, CancelPending };
@@ -85,4 +85,4 @@ private:
     std::condition_variable not_full_;
 };
 
-}  // namespace yolo
+}  // namespace common

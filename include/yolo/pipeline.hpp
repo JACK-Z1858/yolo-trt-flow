@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #pragma once
-#include "yolo/blocking_queue.hpp"
+#include "common/blocking_queue.hpp"
 #include "yolo/trt_engine.hpp"
 #include <atomic>
 #include <exception>
@@ -12,7 +12,7 @@ struct PipelineConfig {
     std::string engine_path;
     int device{0};
     std::size_t queue_depth{4};
-    QueueFullPolicy queue_full_policy{QueueFullPolicy::Block};
+    common::QueueFullPolicy queue_full_policy{common::QueueFullPolicy::Block};
 };
 struct PipelineStats {
     std::uint64_t submitted{};
@@ -35,11 +35,11 @@ public:
 
     // Single-use instance. start()/stop()/destruction belong to the owning thread.
     void start();
-    bool submit(FramePtr frame);
+    bool submit(common::FramePtr frame);
     // Thread-safe, non-joining request. Cancel may escalate a previous Drain.
-    void request_stop(StopMode mode = StopMode::CancelPending);
+    void request_stop(common::StopMode mode = common::StopMode::CancelPending);
     // Waits for worker and callbacks to finish. Safe to repeat from the owner.
-    void stop(StopMode mode = StopMode::CancelPending);
+    void stop(common::StopMode mode = common::StopMode::CancelPending);
     PipelineStats stats() const;
 private:
     void run() noexcept;
@@ -48,7 +48,7 @@ private:
     ResultCallback on_result_;
     ErrorCallback on_error_;
     FinishedCallback on_finished_;
-    BlockingQueue<FramePtr> input_;
+    common::BlockingQueue<common::FramePtr> input_;
     std::unique_ptr<TrtEngine> engine_;
     std::thread worker_;
     bool started_{false};

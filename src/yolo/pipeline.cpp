@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #include "yolo/pipeline.hpp"
-#include "yolo/log.hpp"
+#include "common/log.hpp"
 #include <stdexcept>
 #include <utility>
 
 namespace yolo {
+using common::FramePtr;
+using common::LogLevel;
+using common::PushResult;
+using common::StopMode;
+using common::log;
 InferencePipeline::InferencePipeline(PipelineConfig config, ResultCallback on_result,
                                      ErrorCallback on_error, FinishedCallback on_finished)
     : config_(std::move(config)), on_result_(std::move(on_result)),

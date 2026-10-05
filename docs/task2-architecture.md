@@ -9,7 +9,15 @@ Reader → FrameBus → InferencePipeline [输入队列 → 单个 TrtWorker]
 
 `yolo_trt_core` 包含 `TrtEngine`、`TrtWorker` 和 `InferencePipeline`。
 它不读视频或 YAML，不画框，也不负责 GUI。
-暂时沿用 `src/` 和 `include/yolo/`，通过 CMake target 划分库和应用。
+头文件和实现按同一边界分目录：
+
+- `include/common/`、`src/common/`：帧、FrameBus、队列和日志，命名空间 `common`。
+- `include/yolo/`、`src/yolo/`：检测结果、TensorRT 和 YOLO pipeline，命名空间 `yolo`。
+- `include/app/cli/`、`src/app/cli/`：配置、Reader、渲染、入口及组装，命名空间 `app::cli`。
+
+原始 Frame 独立放在 `common/frame.hpp`，YOLO 检测结果留在 `yolo/types.hpp`。
+依赖方向为 CLI → YOLO/common、YOLO → common；公共组件不依赖 YOLO。
+对应 CMake target 为 `flow_common`、`yolo_trt_core` 和 `flow_cli_support`。
 未来 Qt、服务器、ROS 2 适配器可以直接链接该库。
 
 ## 接口与所有权
@@ -76,6 +84,8 @@ Submitted 统计已接受任务；processed 统计成功完成推理的任务；
 3. 切 realtime，确认队列容量 1、允许 ID 跳跃且能完成退出。
 4. 运行 CTest 检查阻塞/唤醒、排空/取消、丢旧释放引用、共享分发及原图不变。
 
-Review 顺序：`types.hpp` → `pipeline.hpp` → `blocking_queue.hpp` →
-`pipeline.cpp` → `cli.cpp`。先关注数据所有权、回调线程和停止时谁解除阻塞。
+Review 顺序：`include/common/frame.hpp` → `include/yolo/types.hpp` →
+`include/yolo/pipeline.hpp` → `include/common/blocking_queue.hpp` →
+`src/yolo/pipeline.cpp` → `src/app/cli/cli.cpp`。
+先关注数据所有权、回调线程和停止时谁解除阻塞。
 `examples/callback_demo.cpp` 可单独练习普通回调与线程的区别。

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#include "yolo/log.hpp"
+#include "common/log.hpp"
 #include <chrono>
 #include <ctime>
 #include <iomanip>
@@ -7,7 +7,7 @@
 #include <mutex>
 #include <thread>
 
-namespace yolo {
+namespace common {
 void log(LogLevel level, std::string_view module, std::string_view message) noexcept {
     try {
         static std::mutex mutex;
@@ -29,4 +29,4 @@ void log(LogLevel level, std::string_view module, std::string_view message) noex
         // Never throw into TensorRT's noexcept logger or shutdown.
     }
 }
-}  // namespace yolo
+}  // namespace common

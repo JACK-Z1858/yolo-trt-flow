@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #pragma once
-#include "yolo/types.hpp"
+#include "common/frame.hpp"
 #include <functional>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
-namespace yolo {
+namespace common {
 class FrameBus {
 public:
     using Subscriber = std::function<bool(FramePtr)>;
@@ -28,4 +28,4 @@ public:
 private:
     std::vector<Subscriber> subscribers_;
 };
-}  // namespace yolo
+}  // namespace common
