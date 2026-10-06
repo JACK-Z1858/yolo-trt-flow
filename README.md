@@ -70,6 +70,17 @@ Copy and edit `config.example.yaml` to select the engine, source, and
 to offline mode. Missing mode defaults to offline. This version uses one worker;
 legacy `pipeline.workers` values other than 1 produce a warning and are ignored.
 
+To simulate a camera with a local video, set `input.fake_camera: 1`.
+This forces realtime mode and queue capacity 1, regardless of `pipeline.mode`
+and `pipeline.queue_depth` (an explicit offline mode produces a warning).
+The reader publishes at the video's recorded FPS,
+with the first frame sent immediately. Invalid/missing video FPS is reported
+as an error. Playback ends at EOF; it does not loop or skip source frames.
+If decoding or a blocking subscriber is slow, playback slows without a catch-up
+burst. This is a pacing simulator, not a hard realtime camera emulator.
+`fake_camera` defaults to 0: input is unpaced and follows `pipeline.mode`.
+`output.fps` only controls the saved video's FPS, not the input rate.
+
 Natural end of input drains pending tasks. Pressing `q` cancels pending input,
 allows the current inference to finish, and consumes available results before
 joining the worker. A stopped pipeline must be recreated to run again.

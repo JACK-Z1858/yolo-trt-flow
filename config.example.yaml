@@ -7,6 +7,10 @@ model:
 input:
   # Image, image directory, video, stream URL, or quoted camera index such as "0".
   source: "data/passby.mp4"
+  # 1: simulate a camera at the video's FPS, forcing realtime / queue capacity 1.
+  # 0: read normally, using pipeline.mode and its queue policy.
+  # Only local video files are supported. EOF ends playback (no looping).
+  fake_camera: 0
 
 pipeline:
   # offline: process every frame; realtime: keep only the latest pending frame.

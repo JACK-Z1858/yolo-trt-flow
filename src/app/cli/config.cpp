@@ -37,12 +37,19 @@ Config load_config(const std::string& path) {
     read_if_present(model, "engine", config.engine_path);
     read_if_present(model, "device", config.device);
     read_if_present(input, "source", config.source);
+    read_if_present(input, "fake_camera", config.fake_camera);
 
     std::string mode = "offline";
     read_if_present(pipeline, "mode", mode);
     if (mode == "offline") config.mode = InputMode::Offline;
     else if (mode == "realtime") config.mode = InputMode::Realtime;
     else throw std::runtime_error("pipeline.mode must be offline or realtime");
+    if (config.fake_camera) {
+        if (!pipeline["mode"].empty() && config.mode != InputMode::Realtime) {
+            log(LogLevel::Warning, "config", "input.fake_camera forces realtime; pipeline.mode is ignored");
+        }
+        config.mode = InputMode::Realtime;
+    }
 
     // Legacy configurations are accepted, but execution is now single-worker.
     if (!pipeline["workers"].empty()) {

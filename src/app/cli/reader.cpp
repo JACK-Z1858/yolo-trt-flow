@@ -5,8 +5,11 @@
 #include <opencv2/videoio.hpp>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 namespace app::cli {
@@ -42,6 +45,9 @@ void read_source(const Config& config, const FrameBus& bus, const std::atomic<bo
         return bus.publish(frame);
     };
     const fs::path source(config.source);
+    if (config.fake_camera && (!fs::is_regular_file(source) || is_image(source))) {
+        throw std::runtime_error("input.fake_camera requires a local video file");
+    }
     if (fs::is_directory(source)) {
         std::vector<fs::path> images;
         for (const auto& entry : fs::directory_iterator(source)) {
@@ -58,8 +64,31 @@ void read_source(const Config& config, const FrameBus& bus, const std::atomic<bo
         if (is_camera(config.source)) capture.open(std::stoi(config.source));
         else capture.open(config.source);
         if (!capture.isOpened()) throw std::runtime_error("cannot open input source: " + config.source);
+        using Clock = std::chrono::steady_clock;
+        Clock::duration period{};
+        if (config.fake_camera) {
+            const double fps = capture.get(cv::CAP_PROP_FPS);
+            if (!std::isfinite(fps) || fps <= 0) {
+                throw std::runtime_error("cannot determine video FPS for input.fake_camera");
+            }
+            period = std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(1.0 / fps));
+            if (period <= Clock::duration::zero()) {
+                throw std::runtime_error("video FPS is too high for playback pacing");
+            }
+            log(LogLevel::Info, "reader", "paced video input: " + std::to_string(fps) + " FPS");
+        }
+        auto next_frame = Clock::now();
         cv::Mat image;
         while (can_read() && capture.read(image)) {
+            if (config.fake_camera) {
+                // Short waits make stop responsive, even for low-FPS videos.
+                while (!stopping && Clock::now() < next_frame) {
+                    std::this_thread::sleep_until(std::min(next_frame, Clock::now() + std::chrono::milliseconds(10)));
+                }
+                if (stopping) break;
+                // Never burst to catch up if decoding or a blocking subscriber was slow.
+                next_frame = std::max(next_frame + period, Clock::now() + period);
+            }
             if (!publish(image)) break;
         }
     }

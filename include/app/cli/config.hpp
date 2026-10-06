@@ -13,6 +13,7 @@ enum class InputMode { Offline, Realtime };
 struct Config {
     std::string engine_path;
     std::string source;
+    bool fake_camera{false};  // Local video at recorded FPS; forces realtime mode.
     int device{0};
     InputMode mode{InputMode::Offline};
     std::size_t queue_depth{4};
